@@ -7,5 +7,5 @@ services:
       - .:/app
     environment:
       FLASK_ENV: development
-      AZURE_OPENAI_API_KEY: "1811695dbd824d2aaf66323f8346b894"
-      AZURE_OPENAI_ENDPOINT: "https://eastus.api.cognitive.microsoft.com/"
+      AZURE_OPENAI_API_KEY: ""
+      AZURE_OPENAI_ENDPOINT: ""
