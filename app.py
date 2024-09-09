@@ -1,16 +1,13 @@
 from flask import Flask, request, render_template, jsonify
 import csv
 import os
-from langchain.tools import BaseTool, StructuredTool, Tool, tool
-from langchain_openai import ChatOpenAI
+from langchain.tools import Tool, tool
+from langchain_openai import AzureChatOpenAI
 from langchain.chains.conversation.memory import ConversationBufferWindowMemory
-from langchain.agents import initialize_agent
+from langchain.agents import initialize_agent  
 from langchain.agents import AgentExecutor, create_react_agent
 from langchain import hub
-from langchain_core.prompts import PromptTemplate
-import json
 import re
-from pydantic import BaseModel, Field
 from langchain_core.tools import Tool
 import ast
 
@@ -31,7 +28,7 @@ if not os.path.exists(CONTACT_INFO_FILE):
         writer = csv.writer(file)
         writer.writerow(["name", "email", "phone"])
 
-os.environ["LANGCHAIN_TRACING_V2"] = "false"
+os.environ["LANGCHAIN_TRACING"] = "false"
 
 # --------- 1. Retreive order status: ---------
 @tool
@@ -55,7 +52,6 @@ def get_order_status(order_id: str) -> str:
 # --------- 2: save contact info: ---------
 @tool
 def save_contact_info(contact_info: str) -> str:
-    # https://stackoverflow.com/questions/78051789/validation-error-while-using-multi-input-tools-in-react-agent-relating-to-numb
     '''Gather contact information for users who want to
     interact with a person. Contact information should include full name, email, and phone
     number. Save the information to a CSV file with a single row in the same folder as the
@@ -74,16 +70,21 @@ def save_contact_info(contact_info: str) -> str:
         writer.writerow([name, email, phone])
     return "The information has been saved in the system!"
 
+# Update: Use Azure OpenAI API key
+azure_endpoint = os.getenv("AZURE_OPENAI_ENDPOINT")
+azure_api_key = os.getenv("AZURE_OPENAI_API_KEY")
+if not azure_endpoint or not azure_api_key:
+    raise ValueError("No Azure OpenAI API key or endpoint found. Please set the AZURE_OPENAI_ENDPOINT and AZURE_OPENAI_API_KEY environment variables.")
 
-
-openai_api_key = os.getenv("OPENAI_API_KEY")
-if not openai_api_key:
-    raise ValueError("No OpenAI API key found. Please set the OPENAI_API_KEY environment variable.")
-
-llm = ChatOpenAI(
-    model_name='gpt-4o',
+llm = AzureChatOpenAI(
+    azure_deployment="gpt-4o-deployment",
+    api_version="2024-07-01-preview",
     temperature=0.6,
-    openai_api_key=openai_api_key
+    max_tokens=None,
+    timeout=None,
+    max_retries=2,
+    model="gpt-4o",
+    model_version="2024-05-13"
 )
 
 conversational_memory = ConversationBufferWindowMemory(
@@ -99,7 +100,7 @@ def get_final_prompt(bot_name):
     You are an ecommerce chatbot, and you need to support the following requests from users:
 
     1. Order Status:
-     When a user asks for the status of an order, the agent should ask for the order_id and then respond with the order status. Use the 'get_order_status' function with the order_id to get the status. If the order_id is missing, ask the user for it.
+    When a user asks for the status of an order, the agent should ask for the order_id and then respond with the order status. Use the 'get_order_status' function with the order_id to get the status. If the order_id is missing, ask the user for it.
     For Example:
     Thought: I need the order ID to check the status.
     Action: get_order_status
@@ -126,11 +127,11 @@ def get_final_prompt(bot_name):
     You need to be familiar on those rules:
     Return Policies:
     Q: What is the return policy for items purchased at our store?
-        A: You can return most items within 30 days of purchase for a full refund or exchange. Items must be in their original condition, with all tags and packaging intact. Please bring your receipt or proof of purchase when returning items.
+    A: You can return most items within 30 days of purchase for a full refund or exchange. Items must be in their original condition, with all tags and packaging intact. Please bring your receipt or proof of purchase when returning items.
     Q: Are there any items that cannot be returned under this policy?
-        A: Yes, certain items such as clearance merchandise, perishable goods, and personal care items are non-returnable. Please check the product description or ask a store associate for more details.
+    A: Yes, certain items such as clearance merchandise, perishable goods, and personal care items are non-returnable. Please check the product description or ask a store associate for more details.
     Q: How will I receive my refund?
-        A: Refunds will be issued to the original form of payment. If you paid by credit card, the refund will be credited to your card. If you paid by cash or check, you will receive a cash refund.
+    A: Refunds will be issued to the original form of payment. If you paid by credit card, the refund will be credited to your card. If you paid by cash or check, you will receive a cash refund.
     on user question from this type you only use:
     Thought: Do I need to use a tool? No
     Final Answer: [your response here]
@@ -159,10 +160,12 @@ def react_agent_chat(botname, user_query):
 def chatbot_response(user_query, context):
     return react_agent_chat("Jone", user_query), None
 
+# Home route
 @app.route('/')
 def home():
     return render_template('index.html')
 
+# Route to handle chatbot responses
 @app.route('/get_response', methods=['POST'])
 def get_response():
     user_query = request.json['query']

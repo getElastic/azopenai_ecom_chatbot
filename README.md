@@ -1,6 +1,6 @@
-# ecom-chatbot
+# azopenai_ecom_chatbot
 
-This eCommerce chatbot offers essential services, such as order status inquiries, return policy details, and user contact collection for human follow-up. Built with Flask and integrated with OpenAI's GPT-4, it ensures efficient customer support.
+This eCommerce chatbot offers essential services, such as order status inquiries, return policy details, and user contact collection for human follow-up. Built with Flask and integrated with Azure OpenAI's GPT-4, it ensures efficient customer support.
 
 ## Prerequisites
 
@@ -11,15 +11,16 @@ This eCommerce chatbot offers essential services, such as order status inquiries
 1. **Clone the repository**:
 
    ```bash
-   git clone https://github.com/yourusername/ecom-chatbot
-   cd ecom-chatbot
+   git clone https://github.com/yourusername/azopenai_ecom_chatbot.git
+   cd azopenai_ecom_chatbot
    ```
    
 2. **Add your OpenAI API key**:
 
    Update the docker-compose.yml file with your OpenAI API key:
    ```bash
-   OPENAI_API_KEY: your_openai_api_key_here
+   AZURE_OPENAI_API_KEY: your_azure_openai_api_key_here
+   AZURE_OPENAI_ENDPOINT: your_azure_openai_endpoint_here
    ```
 
 ## How to Run
